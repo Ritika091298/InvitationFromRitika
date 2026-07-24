@@ -84,6 +84,30 @@
   );
   revealTargets.forEach((el) => io.observe(el));
 
+     /* ---------------- Background music ---------------- */
+  // Browsers block audio until the first user interaction, so we start
+  // the music on the first tap/click/keypress anywhere on the page.
+  const bgMusic = document.getElementById("bg-music");
+  if (bgMusic) {
+    bgMusic.volume = 0.5;
+    let musicStarted = false;
+    const startMusic = () => {
+      if (musicStarted) return;
+      const p = bgMusic.play();
+      if (p && typeof p.then === "function") {
+        p.then(() => { musicStarted = true; }).catch(() => {});
+      } else {
+        musicStarted = true;
+      }
+    };
+    // Try immediately (works if the browser allows autoplay)
+    startMusic();
+    // Fallback: start on the very first user interaction
+    ["click", "touchstart", "keydown"].forEach((evt) =>
+      window.addEventListener(evt, startMusic, { once: true })
+    );
+  }
+
   /* ---------------- Envelope intro ---------------- */
   const overlay = document.getElementById("envelope-overlay");
   const envelope = document.getElementById("envelope");
