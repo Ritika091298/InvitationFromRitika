@@ -84,7 +84,7 @@
   );
   revealTargets.forEach((el) => io.observe(el));
 
-  /* ---------------- Wedding background music ---------------- */
+  /* ---------------- Full-invitation wedding music ---------------- */
   // Browsers generally require a user gesture before playing audio.
   // Once started, the instrumental keeps looping for the full invitation.
   const bgMusic = document.getElementById("bg-music");
@@ -195,6 +195,47 @@
     });
   }
   if (enterBtn) enterBtn.addEventListener("click", closeOverlay);
+
+
+  /* ---------------- Stop music only at the end of the page ---------------- */
+  let endFadeStarted = false;
+
+  function fadeMusicAtPageEnd(duration = 2200) {
+    if (!bgMusic || bgMusic.paused || endFadeStarted) return;
+    endFadeStarted = true;
+
+    const startVolume = bgMusic.volume;
+    const steps = 28;
+    const stepTime = Math.max(30, Math.floor(duration / steps));
+    let step = 0;
+
+    const fadeTimer = setInterval(() => {
+      step += 1;
+      bgMusic.volume = Math.max(0, startVolume * (1 - step / steps));
+
+      if (step >= steps) {
+        clearInterval(fadeTimer);
+        bgMusic.pause();
+        bgMusic.volume = startVolume;
+      }
+    }, stepTime);
+  }
+
+  function checkForPageEnd() {
+    if (!bgMusic || endFadeStarted) return;
+
+    const scrollBottom = window.scrollY + window.innerHeight;
+    const pageBottom = document.documentElement.scrollHeight;
+
+    // Keep music playing through the footer. Fade only when the visitor
+    // has genuinely reached the bottom edge of the invitation.
+    if (scrollBottom >= pageBottom - 8) {
+      fadeMusicAtPageEnd();
+    }
+  }
+
+  window.addEventListener("scroll", checkForPageEnd, { passive: true });
+  window.addEventListener("resize", checkForPageEnd);
 
   /* ---------------- Scratch card ---------------- */
   const scratchCanvas = document.getElementById("scratch-canvas");
