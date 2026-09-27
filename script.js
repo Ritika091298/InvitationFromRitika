@@ -84,54 +84,83 @@
   );
   revealTargets.forEach((el) => io.observe(el));
 
-  /* ---------------- Envelope intro music ---------------- */
-  // Most browsers require a user gesture before sound can play.
-  // We try on load, then start reliably when the envelope is tapped.
+  /* ---------------- Wedding background music ---------------- */
+  // Browsers generally require a user gesture before playing audio.
+  // Once started, the instrumental keeps looping for the full invitation.
   const bgMusic = document.getElementById("bg-music");
   let musicStarted = false;
-  let musicFadeTimer = null;
+  let audioContext = null;
+  let mediaSource = null;
 
-  function startIntroMusic() {
-    if (!bgMusic || musicStarted) return;
-    bgMusic.volume = 0.42;
+  function enhanceMusicClarity() {
+    if (!bgMusic || audioContext) return;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+
+      audioContext = new AudioCtx();
+      mediaSource = audioContext.createMediaElementSource(bgMusic);
+
+      const lowShelf = audioContext.createBiquadFilter();
+      lowShelf.type = "lowshelf";
+      lowShelf.frequency.value = 180;
+      lowShelf.gain.value = 0.5;
+
+      const highShelf = audioContext.createBiquadFilter();
+      highShelf.type = "highshelf";
+      highShelf.frequency.value = 2600;
+      highShelf.gain.value = 2.2;
+
+      const compressor = audioContext.createDynamicsCompressor();
+      compressor.threshold.value = -18;
+      compressor.knee.value = 12;
+      compressor.ratio.value = 2;
+      compressor.attack.value = 0.02;
+      compressor.release.value = 0.22;
+
+      mediaSource
+        .connect(lowShelf)
+        .connect(highShelf)
+        .connect(compressor)
+        .connect(audioContext.destination);
+    } catch (e) {
+      // Fall back to normal HTML audio if Web Audio is unavailable.
+    }
+  }
+
+  function startWeddingMusic() {
+    if (!bgMusic) return;
+
+    enhanceMusicClarity();
+
+    if (audioContext && audioContext.state === "suspended") {
+      audioContext.resume().catch(() => {});
+    }
+
+    bgMusic.loop = true;
+    bgMusic.volume = 0.58;
+
+    if (!bgMusic.paused) {
+      musicStarted = true;
+      return;
+    }
+
     const playPromise = bgMusic.play();
-
     if (playPromise && typeof playPromise.then === "function") {
       playPromise
         .then(() => { musicStarted = true; })
         .catch(() => {
-          // Expected when autoplay is blocked until a user gesture.
+          // A later tap/click will retry if autoplay was blocked.
         });
     } else {
       musicStarted = true;
     }
   }
 
-  function fadeOutIntroMusic(duration = 1200) {
-    if (!bgMusic || bgMusic.paused) return;
-    if (musicFadeTimer) clearInterval(musicFadeTimer);
-
-    const startVolume = bgMusic.volume;
-    const steps = 20;
-    const stepTime = Math.max(20, Math.floor(duration / steps));
-    let step = 0;
-
-    musicFadeTimer = setInterval(() => {
-      step += 1;
-      bgMusic.volume = Math.max(0, startVolume * (1 - step / steps));
-
-      if (step >= steps) {
-        clearInterval(musicFadeTimer);
-        musicFadeTimer = null;
-        bgMusic.pause();
-        bgMusic.currentTime = 0;
-        bgMusic.volume = 0.42;
-        musicStarted = false;
-      }
-    }, stepTime);
-  }
-
-  startIntroMusic();
+  // Some browsers may allow this immediately; otherwise the envelope tap
+  // below starts playback. Music is intentionally never stopped on entry.
+  startWeddingMusic();
 
   /* ---------------- Envelope intro ---------------- */
   const overlay = document.getElementById("envelope-overlay");
@@ -142,7 +171,7 @@
 
   function openEnvelope() {
     if (envelopeOpened || !envelope) return;
-    startIntroMusic();
+    startWeddingMusic();
     envelopeOpened = true;
     envelope.classList.add("opening");
     if (envHint) envHint.classList.add("hide");
@@ -153,7 +182,7 @@
 
   function closeOverlay() {
     if (!overlay) return;
-    fadeOutIntroMusic(1200);
+    startWeddingMusic();
     overlay.classList.add("open-done");
     document.body.style.overflow = "";
   }
