@@ -84,29 +84,54 @@
   );
   revealTargets.forEach((el) => io.observe(el));
 
-     /* ---------------- Background music ---------------- */
-  // Browsers block audio until the first user interaction, so we start
-  // the music on the first tap/click/keypress anywhere on the page.
+  /* ---------------- Envelope intro music ---------------- */
+  // Most browsers require a user gesture before sound can play.
+  // We try on load, then start reliably when the envelope is tapped.
   const bgMusic = document.getElementById("bg-music");
-  if (bgMusic) {
-    bgMusic.volume = 0.5;
-    let musicStarted = false;
-    const startMusic = () => {
-      if (musicStarted) return;
-      const p = bgMusic.play();
-      if (p && typeof p.then === "function") {
-        p.then(() => { musicStarted = true; }).catch(() => {});
-      } else {
-        musicStarted = true;
-      }
-    };
-    // Try immediately (works if the browser allows autoplay)
-    startMusic();
-    // Fallback: start on the very first user interaction
-    ["click", "touchstart", "keydown"].forEach((evt) =>
-      window.addEventListener(evt, startMusic, { once: true })
-    );
+  let musicStarted = false;
+  let musicFadeTimer = null;
+
+  function startIntroMusic() {
+    if (!bgMusic || musicStarted) return;
+    bgMusic.volume = 0.42;
+    const playPromise = bgMusic.play();
+
+    if (playPromise && typeof playPromise.then === "function") {
+      playPromise
+        .then(() => { musicStarted = true; })
+        .catch(() => {
+          // Expected when autoplay is blocked until a user gesture.
+        });
+    } else {
+      musicStarted = true;
+    }
   }
+
+  function fadeOutIntroMusic(duration = 1200) {
+    if (!bgMusic || bgMusic.paused) return;
+    if (musicFadeTimer) clearInterval(musicFadeTimer);
+
+    const startVolume = bgMusic.volume;
+    const steps = 20;
+    const stepTime = Math.max(20, Math.floor(duration / steps));
+    let step = 0;
+
+    musicFadeTimer = setInterval(() => {
+      step += 1;
+      bgMusic.volume = Math.max(0, startVolume * (1 - step / steps));
+
+      if (step >= steps) {
+        clearInterval(musicFadeTimer);
+        musicFadeTimer = null;
+        bgMusic.pause();
+        bgMusic.currentTime = 0;
+        bgMusic.volume = 0.42;
+        musicStarted = false;
+      }
+    }, stepTime);
+  }
+
+  startIntroMusic();
 
   /* ---------------- Envelope intro ---------------- */
   const overlay = document.getElementById("envelope-overlay");
@@ -117,6 +142,7 @@
 
   function openEnvelope() {
     if (envelopeOpened || !envelope) return;
+    startIntroMusic();
     envelopeOpened = true;
     envelope.classList.add("opening");
     if (envHint) envHint.classList.add("hide");
@@ -127,6 +153,7 @@
 
   function closeOverlay() {
     if (!overlay) return;
+    fadeOutIntroMusic(1200);
     overlay.classList.add("open-done");
     document.body.style.overflow = "";
   }
