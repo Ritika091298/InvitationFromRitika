@@ -84,7 +84,7 @@
   );
   revealTargets.forEach((el) => io.observe(el));
 
-  /* ---------------- Wedding background music ---------------- */
+  /* ---------------- Full-invitation wedding music ---------------- */
   // Browsers generally require a user gesture before playing audio.
   // Once started, the instrumental keeps looping for the full invitation.
   const bgMusic = document.getElementById("bg-music");
@@ -195,6 +195,46 @@
     });
   }
   if (enterBtn) enterBtn.addEventListener("click", closeOverlay);
+
+
+  /* ---------------- Stop music only at the end of the page ---------------- */
+  let endFadeStarted = false;
+
+  function fadeMusicAtPageEnd(duration = 2200) {
+    if (!bgMusic || bgMusic.paused || endFadeStarted) return;
+    endFadeStarted = true;
+
+    const startVolume = bgMusic.volume;
+    const steps = 28;
+    const stepTime = Math.max(30, Math.floor(duration / steps));
+    let step = 0;
+
+    const fadeTimer = setInterval(() => {
+      step += 1;
+      bgMusic.volume = Math.max(0, startVolume * (1 - step / steps));
+
+      if (step >= steps) {
+        clearInterval(fadeTimer);
+        bgMusic.pause();
+        bgMusic.volume = startVolume;
+      }
+    }, stepTime);
+  }
+
+  const invitationFooter = document.querySelector(".footer");
+  if (invitationFooter && bgMusic) {
+    const footerObserver = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+            fadeMusicAtPageEnd();
+          }
+        });
+      },
+      { threshold: [0.65] }
+    );
+    footerObserver.observe(invitationFooter);
+  }
 
   /* ---------------- Scratch card ---------------- */
   const scratchCanvas = document.getElementById("scratch-canvas");
