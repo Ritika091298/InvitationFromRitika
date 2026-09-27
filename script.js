@@ -221,20 +221,21 @@
     }, stepTime);
   }
 
-  const invitationFooter = document.querySelector(".footer");
-  if (invitationFooter && bgMusic) {
-    const footerObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
-            fadeMusicAtPageEnd();
-          }
-        });
-      },
-      { threshold: [0.65] }
-    );
-    footerObserver.observe(invitationFooter);
+  function checkForPageEnd() {
+    if (!bgMusic || endFadeStarted) return;
+
+    const scrollBottom = window.scrollY + window.innerHeight;
+    const pageBottom = document.documentElement.scrollHeight;
+
+    // Keep music playing through the footer. Fade only when the visitor
+    // has genuinely reached the bottom edge of the invitation.
+    if (scrollBottom >= pageBottom - 8) {
+      fadeMusicAtPageEnd();
+    }
   }
+
+  window.addEventListener("scroll", checkForPageEnd, { passive: true });
+  window.addEventListener("resize", checkForPageEnd);
 
   /* ---------------- Scratch card ---------------- */
   const scratchCanvas = document.getElementById("scratch-canvas");
