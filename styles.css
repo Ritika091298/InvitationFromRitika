@@ -469,6 +469,7 @@ html[lang="hi"] .couple .name { font-size: clamp(2.6rem, 10vw, 5rem); }
   background: linear-gradient(180deg, #fff, var(--cream-2));
   color: var(--maroon);
 }
+
 .scratch-label {
   font-family: var(--font-display);
   text-transform: uppercase;
